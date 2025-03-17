@@ -4,9 +4,12 @@ import qrcode
 import smtplib
 import ssl
 import gspread
+import json
 from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
-import json
+from flask import Flask
+
+app = Flask(__name__)
 
 # ------------------------------
 # Настройка Google Sheets API
@@ -16,14 +19,12 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")  # Загружаем JSON из переменной окружения
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")  # ID таблицы из переменной окружения
+CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 
-creds_dict = json.loads(CREDENTIALS_JSON)  # Декодируем JSON-ключ
+creds_dict = json.loads(CREDENTIALS_JSON)
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
 client = gspread.authorize(creds)
-
-# Подключение к листу
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 
 # ------------------------------
@@ -31,11 +32,10 @@ sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 # ------------------------------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = os.getenv("SMTP_USER")  # Email
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Пароль приложения
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 def send_email(email, name, qr_filename):
-    """Отправка письма с прикреплённым QR-кодом."""
     try:
         msg = EmailMessage()
         msg["Subject"] = "Ваш QR-код"
@@ -64,7 +64,6 @@ def send_email(email, name, qr_filename):
         return False
 
 def process_new_guests():
-    """Обработка данных из Google Sheets."""
     all_values = sheet.get_all_values()
 
     for i in range(1, len(all_values)):
@@ -87,13 +86,23 @@ def process_new_guests():
         if send_email(email, name, qr_filename):
             sheet.update_cell(i+1, 8, "Done")
 
-def main_loop():
+# Фоновый процесс
+def background_task():
     while True:
         try:
             process_new_guests()
         except Exception as e:
-            print("[Ошибка] при обработке гостей:", e)
+            print(f"[Ошибка] {e}")
         time.sleep(30)
 
+# Запуск фонового процесса при старте
+import threading
+threading.Thread(target=background_task, daemon=True).start()
+
+@app.route("/")
+def home():
+    return "QR Code Generator is running!", 200
+
 if __name__ == '__main__':
-    main_loop()
+    port = int(os.environ.get("PORT", 5000))  # Render использует переменную PORT
+    app.run(host="0.0.0.0", port=port)
