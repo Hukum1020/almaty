@@ -1,45 +1,38 @@
 import os
+import time
 import qrcode
 import smtplib
 import ssl
-from flask import Flask, request, jsonify
+import gspread
 from email.message import EmailMessage
-from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
+from oauth2client.service_account import ServiceAccountCredentials
 
-app = Flask(__name__)
-CORS(app)
+# ------------------------------
+# Настройка Google Sheets API
+# ------------------------------
+SCOPE = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+CREDENTIALS_FILE = r"C:\Users\Hukum\Desktop\test\bigroup-454020-ee270aaea23e.json"  # Путь к JSON-файлу ключа
+SPREADSHEET_ID = "1PlDRt50qcTUUxVglsLfT76fiTYj9Hb2IMyKPDNNHoHQ"  # ID Google Таблицы
 
-# 🔹 Подключение к PostgreSQL через Render
-DATABASE_URL = os.environ.get("DATABASE_URL")
+creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, SCOPE)
+client = gspread.authorize(creds)
 
-# Проверяем, что переменная есть
-if not DATABASE_URL:
-    raise RuntimeError("❌ Ошибка: DATABASE_URL не найден! Проверь переменные окружения.")
+# Предположим, что у вас основной лист - sheet1
+sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 
-app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
-
-# 🔹 Определяем таблицу гостей
-class Guest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    surname = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    status = db.Column(db.String(20), default="не пришел")
-
-# 🔹 Создаём таблицы (если их нет)
-with app.app_context():
-    db.create_all()
-
-# 🔹 SMTP (отправка email с QR-кодом)
+# ------------------------------
+# Настройка SMTP (Gmail)
+# ------------------------------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = "your_email@gmail.com"  # Замени на свою почту
-SMTP_PASSWORD = "your_app_password"  # Используй пароль приложения!
+SMTP_USER = "nikfedorov65@gmail.com"    # Ваш Gmail-адрес
+SMTP_PASSWORD = "isqz pccv rigl sxek"   # Пароль приложения (или обычный, если 2FA отключена)
 
 def send_email(email, name, qr_filename):
+    """Отправка письма с прикреплённым QR-кодом."""
     try:
         msg = EmailMessage()
         msg["Subject"] = "Ваш QR-код"
@@ -48,7 +41,12 @@ def send_email(email, name, qr_filename):
         msg.set_content(f"Здравствуйте, {name}!\n\nВаш персональный QR-код во вложении.")
 
         with open(qr_filename, "rb") as qr_file:
-            msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
+            msg.add_attachment(
+                qr_file.read(),
+                maintype="image",
+                subtype="png",
+                filename="qrcode.png"
+            )
 
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -56,63 +54,66 @@ def send_email(email, name, qr_filename):
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
+        print(f"[OK] Письмо отправлено на {email}")
         return True
     except Exception as e:
-        print(f"Ошибка при отправке email: {e}")
+        print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
         return False
 
-# 🔹 Регистрация гостя (создание QR-кода и отправка на email)
-@app.route('/generate_qr', methods=['POST'])
-def generate_qr():
-    data = request.json if request.is_json else request.form.to_dict()
-    name, surname, email = data.get("name"), data.get("surname"), data.get("email")
+def process_new_guests():
+    """
+    Считывает все строки из Google Sheets,
+    ищет гостей без статуса 'Done',
+    генерирует QR и отправляет письмо,
+    а затем обновляет столбец 'Status'.
+    """
+    all_values = sheet.get_all_values()
+    # Предположим, структура таблицы:
+    #   A: Name
+    #   B: Phone
+    #   C: Email
+    #   D: Status
+    # Первая строка — заголовки, значит данные начинаются со второй строки.
 
-    if not name or not surname or not email:
-        return jsonify({"error": "Все поля обязательны"}), 400
+    for i in range(1, len(all_values)):
+        row = all_values[i]
+        # Проверяем, что в строке есть нужное кол-во столбцов
+        if len(row) < 4:
+            continue
+ 
+        email, name, phone, status = row[0], row[1], row[2], row[7]
+        
+        # Пропускаем пустые
+        if not name or not phone or not email:
+            continue
 
-    # Проверяем, есть ли email в базе
-    existing_guest = Guest.query.filter_by(email=email).first()
-    if existing_guest:
-        return jsonify({"error": "Этот email уже зарегистрирован"}), 400
+        # Если статус уже "Done", значит ранее отправляли
+        if status.strip().lower() == "done":
+            continue
 
-    # Генерация QR-кода
-    qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
-    os.makedirs("qrcodes", exist_ok=True)
-    qr = qrcode.make(email)
-    qr.save(qr_filename)
+        # Генерируем QR-код
+        qr_data = f"Name: {name}\nPhone: {phone}\nEmail: {email}"
+        os.makedirs("qrcodes", exist_ok=True)
+        qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
 
-    # Сохраняем гостя в базе
-    new_guest = Guest(name=name, surname=surname, email=email)
-    db.session.add(new_guest)
-    db.session.commit()
+        qr = qrcode.make(qr_data)
+        qr.save(qr_filename)
 
-    # Отправляем email
-    if send_email(email, name, qr_filename):
-        return jsonify({"message": "QR-код создан и отправлен на email!"}), 200
-    else:
-        return jsonify({"error": "Ошибка отправки email"}), 500
+        # Отправляем email
+        if send_email(email, name, qr_filename):
+            # Если успешно отправлено, обновляем статус
+            # В gspread нумерация строк и столбцов с 1
+            # i — индекс в Python, поэтому i+1 — реальный номер строки
+            # В нашем случае статус = 4-й столбец
+            sheet.update_cell(i+1, 8, "Done")
 
-# 🔹 Сканирование QR-кода (отметка посещения)
-@app.route('/scan_qr', methods=['POST'])
-def scan_qr():
-    data = request.json if request.is_json else request.form.to_dict()
-    email = data.get("email")
+def main_loop():
+    while True:
+        try:
+            process_new_guests()
+        except Exception as e:
+            print("[Ошибка] при обработке гостей:", e)
+        time.sleep(30)
 
-    if not email:
-        return jsonify({"error": "QR-код некорректен"}), 400
-
-    guest = Guest.query.filter_by(email=email).first()
-    if not guest:
-        return jsonify({"error": "Гость не найден"}), 404
-
-    if guest.status == "не пришел":
-        guest.status = "посетил"
-        db.session.commit()
-        return jsonify({"message": "Гость отмечен как посетивший", "name": guest.name, "surname": guest.surname}), 200
-    else:
-        return jsonify({"message": "Гость уже был отмечен ранее", "name": guest.name, "surname": guest.surname}), 200
-
-# Запуск сервера
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    main_loop()
