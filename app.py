@@ -19,7 +19,7 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+CREDENTIALS_JSON = os.getenv("CREDENTIALS_JSON")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 
 creds_dict = json.loads(CREDENTIALS_JSON)
