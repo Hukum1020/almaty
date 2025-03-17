@@ -1,6 +1,7 @@
-flask
-flask-cors
-flask-sqlalchemy
-psycopg2-binary
-qrcode[pil]
-pillow
+Flask
+gspread
+oauth2client
+qrcode
+smtplib
+email
+ssl
