@@ -1,0 +1,6 @@
+flask
+flask-cors
+qrcode[pil]
+pillow
+smtplib
+email
