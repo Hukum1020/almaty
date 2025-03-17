@@ -5,6 +5,7 @@ import smtplib
 import ssl
 import gspread
 import json
+import traceback
 from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
@@ -19,13 +20,23 @@ SCOPE = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-CREDENTIALS_JSON = "bigroup-454020-ee270aaea23e.json"
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+if not SPREADSHEET_ID:
+    raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
 
-creds_dict = json.loads(CREDENTIALS_JSON)
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
-client = gspread.authorize(creds)
-sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+# Работаем с ключами
+CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
+if not CREDENTIALS_JSON:
+    raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
+
+try:
+    creds_dict = json.loads(CREDENTIALS_JSON)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+except Exception as e:
+    raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
 # ------------------------------
 # Настройка SMTP (Gmail)
@@ -34,6 +45,9 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
+if not SMTP_USER or not SMTP_PASSWORD:
+    raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
 def send_email(email, name, qr_filename):
     try:
@@ -61,30 +75,35 @@ def send_email(email, name, qr_filename):
         return True
     except Exception as e:
         print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
+        traceback.print_exc()
         return False
 
 def process_new_guests():
-    all_values = sheet.get_all_values()
+    try:
+        all_values = sheet.get_all_values()
 
-    for i in range(1, len(all_values)):
-        row = all_values[i]
-        if len(row) < 4:
-            continue
+        for i in range(1, len(all_values)):
+            row = all_values[i]
+            if len(row) < 8:  # Проверяем, есть ли 8 колонок
+                continue
 
-        email, name, phone, status = row[0], row[1], row[2], row[7]
+            email, name, phone, status = row[0], row[1], row[2], row[7]
 
-        if not name or not phone or not email or status.strip().lower() == "done":
-            continue
+            if not name or not phone or not email or status.strip().lower() == "done":
+                continue
 
-        qr_data = f"Name: {name}\nPhone: {phone}\nEmail: {email}"
-        os.makedirs("qrcodes", exist_ok=True)
-        qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
+            qr_data = f"Name: {name}\nPhone: {phone}\nEmail: {email}"
+            os.makedirs("qrcodes", exist_ok=True)
+            qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
 
-        qr = qrcode.make(qr_data)
-        qr.save(qr_filename)
+            qr = qrcode.make(qr_data)
+            qr.save(qr_filename)
 
-        if send_email(email, name, qr_filename):
-            sheet.update_cell(i+1, 8, "Done")
+            if send_email(email, name, qr_filename):
+                sheet.update_cell(i+1, 8, "Done")
+    except Exception as e:
+        print(f"[Ошибка] при обработке гостей: {e}")
+        traceback.print_exc()
 
 # Фоновый процесс
 def background_task():
@@ -93,6 +112,7 @@ def background_task():
             process_new_guests()
         except Exception as e:
             print(f"[Ошибка] {e}")
+            traceback.print_exc()
         time.sleep(30)
 
 # Запуск фонового процесса при старте
