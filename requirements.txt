@@ -1,6 +1,5 @@
 gspread
 oauth2client
 qrcode
-smtplib
 email
 ssl
