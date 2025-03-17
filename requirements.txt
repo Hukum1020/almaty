@@ -2,4 +2,3 @@ flask
 flask-cors
 qrcode[pil]
 pillow
-email
