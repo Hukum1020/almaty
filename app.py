@@ -64,6 +64,11 @@ def send_email(email, name, qr_filename):
 # **1. Регистрация гостя и генерация QR-кода**
 @app.route('/generate_qr', methods=['POST'])
 def generate_qr():
+    if request.content_type == "application/json":
+        data = request.json
+    else:  # Принимаем form-data от Tilda
+        data = request.form.to_dict()
+        
     data = request.json
     name = data.get("name")
     surname = data.get("surname")
