@@ -32,6 +32,10 @@ if not CREDENTIALS_JSON:
 
 try:
     creds_dict = json.loads(CREDENTIALS_JSON)
+    
+    # 🔍 Отладочный вывод, проверяем, загружается ли ключ
+    print(f"[DEBUG] Загруженный private_key (первые 50 символов): {creds_dict.get('private_key')[:50]}")
+
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
