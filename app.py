@@ -97,10 +97,10 @@ def send_email(email, name, qr_filename, language):
             <body>
                 <div class="email-container">
                     <img src="data:image/png;base64,{logo_base64}">
-                    <p>Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span></p>
-                    <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
-                    <p>Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:</p>
-                    <p>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
+                    Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span>
+                    Это ваш входной билет, пожалуйста, не удаляйте это письмо.
+                    Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:
+                    г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre
                 </div>
             </body>
             </html>
