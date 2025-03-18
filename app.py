@@ -65,6 +65,9 @@ def send_email(email, qr_filename, language):
         if os.path.exists(template_filename):
             with open(template_filename, "rb") as template_file:
                 msg.add_attachment(template_file.read(), maintype="text", subtype="html", filename=template_filename)
+        else:
+            print(f"[Ошибка] Файл шаблона {template_filename} не найден.")
+            return False
         
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -82,43 +85,33 @@ def send_email(email, qr_filename, language):
 def process_new_guests():
     try:
         all_values = sheet.get_all_values()
-
+        
         for i in range(1, len(all_values)):
             row = all_values[i]
-            if len(row) < 11:  # Теперь проверяем, что есть хотя бы 11 колонок (до language)
+            if len(row) < 11:
                 continue
-
+            
             email, name, phone, status, language = row[0], row[1], row[2], row[7], row[10].strip().lower()
-
+            
             if not name or not phone or not email or status.strip().lower() == "done":
                 continue
-
+            
             qr_data = f"Name: {name}\nPhone: {phone}\nEmail: {email}"
             os.makedirs("qrcodes", exist_ok=True)
             qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
-
+            
             qr = qrcode.make(qr_data)
             qr.save(qr_filename)
-
-            if send_email(email, name, qr_filename, language):
+            
+            if send_email(email, qr_filename, language):
                 sheet.update_cell(i+1, 8, "Done")
     except Exception as e:
         print(f"[Ошибка] при обработке гостей: {e}")
         traceback.print_exc()
 
-# Фоновый процесс (для обработки Google Sheets)
-def background_task():
-    while True:
-        try:
-            process_new_guests()
-        except Exception as e:
-            print(f"[Ошибка] {e}")
-            traceback.print_exc()
-        time.sleep(30)
-
-# Запуск фонового процесса при старте
+# Фоновый процесс
 import threading
-threading.Thread(target=background_task, daemon=True).start()
+threading.Thread(target=lambda: [process_new_guests(), time.sleep(30)], daemon=True).start()
 
 @app.route("/")
 def home():
