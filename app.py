@@ -67,7 +67,7 @@ def send_email(email, qr_filename, language):
             return False
         
         # Вставляем логотип (если он есть)
-        logo_path = "logo.png"
+        logo_path = "logo2.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
                 msg.add_attachment(logo_file.read(), maintype="image", subtype="png", filename="logo.png", cid="logo")
