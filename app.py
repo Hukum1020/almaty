@@ -1,58 +1,3 @@
-import os
-import time
-import qrcode
-import smtplib
-import ssl
-import gspread
-import json
-import traceback
-from email.message import EmailMessage
-from oauth2client.service_account import ServiceAccountCredentials
-from flask import Flask
-import base64
-
-app = Flask(__name__)
-
-# ------------------------------
-# Настройка Google Sheets API
-# ------------------------------
-SCOPE = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
-
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-if not SPREADSHEET_ID:
-    raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
-
-CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
-if not CREDENTIALS_JSON:
-    raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
-
-try:
-    creds_dict = json.loads(CREDENTIALS_JSON)
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-except Exception as e:
-    raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
-
-# ------------------------------
-# Настройка SMTP (Gmail)
-# ------------------------------
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-
-if not SMTP_USER or not SMTP_PASSWORD:
-    raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
-
-def load_logo_base64():
-    with open("logo2.png", "rb") as img:
-        return base64.b64encode(img.read()).decode('utf-8')
-
 def send_email(email, name, qr_filename, language):
     try:
         msg = EmailMessage()
@@ -60,8 +5,10 @@ def send_email(email, name, qr_filename, language):
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
 
-        logo_base64 = load_logo_base64()
-        
+        # Attach the logo image
+        with open("logo2.png", "rb") as img:
+            msg.add_attachment(img.read(), maintype="image", subtype="png", filename="logo2.png", cid="logo_image")
+
         css_styles = """
             <style>
                 body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
@@ -76,7 +23,7 @@ def send_email(email, name, qr_filename, language):
                 }
                 .email-container img {
                     max-width: 200px;
-                    margin-bottom: 10px;
+                    margin-bottom: 20px;
                 }
                 .email-container p {
                     font-size: 16px;
@@ -89,14 +36,14 @@ def send_email(email, name, qr_filename, language):
                 }
             </style>
         """
-        
+
         if language == "ru":
             body = f"""
             <html>
             <head>{css_styles}</head>
             <body>
                 <div class="email-container">
-                    <img src="data:image/png;base64,{logo_base64}">
+                    <img src="cid:logo_image">
                     <p>Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span></p>
                     <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
                     <p>Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:</p>
@@ -111,7 +58,7 @@ def send_email(email, name, qr_filename, language):
             <head>{css_styles}</head>
             <body>
                 <div class="email-container">
-                    <img src="data:image/png;base64,{logo_base64}">
+                    <img src="cid:logo_image">
                     <p><span class="highlight">BI Ecosystem</span> жүйесіне тіркелгеніңізге рахмет!</p>
                     <p>Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз.</p>
                     <p>Сізді <span class="highlight">5 сәуір күні сағат 09:30</span> Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
@@ -119,9 +66,9 @@ def send_email(email, name, qr_filename, language):
             </body>
             </html>
             """
-        
+
         msg.add_alternative(body, subtype='html')
-        
+
         with open(qr_filename, "rb") as qr_file:
             msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
 
@@ -137,7 +84,6 @@ def send_email(email, name, qr_filename, language):
         print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
         traceback.print_exc()
         return False
-
 
 
 def process_new_guests():
