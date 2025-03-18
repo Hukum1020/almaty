@@ -24,14 +24,15 @@ SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 if not SPREADSHEET_ID:
     raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
 
-# ✅ Используем JSON-файл из репозитория
-CREDENTIALS_FILE = "bigroup-454020-ee270aaea23e.json"  # Укажи правильный путь к файлу
+# Работаем с ключами
+CREDENTIALS_FILE = os.getenv("CREDENTIALS_FILE")
 
-if not os.path.exists(CREDENTIALS_FILE):
-    raise FileNotFoundError(f"❌ Ошибка: Файл {CREDENTIALS_FILE} не найден!")
+if not CREDENTIALS_JSON:
+    raise ValueError("❌ Ошибка: CREDENTIALS_FILE не найдено!")
 
 try:
-    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, SCOPE)
+    creds_dict = json.loads(CREDENTIALS_FILE)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 except Exception as e:
