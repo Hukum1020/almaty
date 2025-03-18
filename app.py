@@ -25,14 +25,14 @@ if not SPREADSHEET_ID:
     raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
 
 # Работаем с ключами
-CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+CREDENTIALS_FILE = "bigroup-454020-ee270aaea23e.json"
 
 if not CREDENTIALS_JSON:
     raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
 
 try:
     creds_dict = json.loads(CREDENTIALS_JSON)
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, SCOPE)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 except Exception as e:
