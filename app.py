@@ -55,7 +55,7 @@ def send_email(email, qr_filename, language):
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
-        msg.set_type("multipart/related")  # Указываем, что письмо содержит изображения внутри HTML
+        msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
@@ -66,19 +66,17 @@ def send_email(email, qr_filename, language):
             print(f"❌ Файл шаблона {template_filename} не найден.")
             return False
 
-        # Вставляем логотип, если он есть
-        logo_path = "logo2.png"
-        if os.path.exists(logo_path):
-            with open(logo_path, "rb") as logo_file:
-                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo2.png", cid="<logo>")
-            html_content = html_content.replace('src="logo.png"', 'src="cid:logo"')
-        else:
-            print("⚠️ Логотип не найден, письмо отправляется без него.")
+        # ✅ Используем внешний URL логотипа
+        logo_url = "https://b1ae40e7-9747-4db5-94a4-aac4051ea42d.b-cdn.net/e/3a9774dd-e7df-498b-889d-6e685be7c356/ecfc08d5-1976-4e7f-a667-030217f18e65.png"
+        html_content = html_content.replace('src="logo2.png"', f'src="{logo_url}"')
 
-        # Вставляем QR-код
+        # Вставляем QR-код (его оставляем в CID)
         with open(qr_filename, "rb") as qr_file:
             msg.add_related(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png", cid="<qr>")
-        
+
+        # Подставляем QR-код в HTML
+        html_content = html_content.replace('src="qrcode.png"', 'src="cid:qr"')
+
         # Добавляем HTML-контент
         msg.add_alternative(html_content, subtype="html")
 
