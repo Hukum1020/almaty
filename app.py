@@ -9,6 +9,7 @@ import traceback
 from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
+import threading
 
 app = Flask(__name__)
 
@@ -29,7 +30,8 @@ if not CREDENTIALS_JSON:
     raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
 
 try:
-    creds_dict = json.loads(CREDENTIALS_JSON)
+    with open(CREDENTIALS_JSON, "r") as file:
+        creds_dict = json.load(file)
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
@@ -111,7 +113,6 @@ def process_new_guests():
         traceback.print_exc()
 
 # Фоновый процесс
-import threading
 threading.Thread(target=lambda: [process_new_guests(), time.sleep(30)], daemon=True).start()
 
 @app.route("/")
