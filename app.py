@@ -24,14 +24,14 @@ SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 if not SPREADSHEET_ID:
     raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
 
-# Работаем с ключами
-CREDENTIALS_FILE = os.getenv("CREDENTIALS_FILE")
+# ✅ Используем JSON-ключ из переменной окружения Railway
+CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
 
-if not CREDENTIALS_FILE:
-    raise ValueError("❌ Ошибка: CREDENTIALS_FILE не найдено!")
+if not CREDENTIALS_JSON:
+    raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
 
 try:
-    creds_dict = json.loads(CREDENTIALS_FILE)
+    creds_dict = json.loads(CREDENTIALS_JSON)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
@@ -105,7 +105,7 @@ def process_new_guests():
         print(f"[Ошибка] при обработке гостей: {e}")
         traceback.print_exc()
 
-# Фоновый процесс
+# Фоновый процесс (для обработки Google Sheets)
 def background_task():
     while True:
         try:
@@ -124,5 +124,5 @@ def home():
     return "QR Code Generator is running!", 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Render использует переменную PORT
+    port = int(os.environ.get("PORT", 5000))  # Railway использует PORT
     app.run(host="0.0.0.0", port=port)
