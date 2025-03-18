@@ -50,7 +50,7 @@ if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
 def load_logo_base64():
-    with open("logo2.png", "rb") as img:
+    with open("/mnt/data/logo2.png", "rb") as img:
         return base64.b64encode(img.read()).decode('utf-8')
 
 def send_email(email, name, qr_filename, language):
@@ -61,17 +61,46 @@ def send_email(email, name, qr_filename, language):
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
 
         logo_base64 = load_logo_base64()
-
+        
+        css_styles = """
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
+                .email-container {
+                    max-width: 600px;
+                    margin: auto;
+                    background: #ffffff;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                .email-container img {
+                    max-width: 200px;
+                    margin-bottom: 20px;
+                }
+                .email-container p {
+                    font-size: 16px;
+                    text-align: left;
+                    color: #333;
+                }
+                .email-container .highlight {
+                    font-weight: bold;
+                    color: #2DB100;
+                }
+            </style>
+        """
+        
         if language == "ru":
             body = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; text-align: center;">
-                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 20px;">
-                    <p style="font-size: 16px; text-align: left;">Спасибо за регистрацию на BI Ecosystem!</p>
-                    <p style="font-size: 16px; text-align: left;">Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
-                    <p style="font-size: 16px; text-align: left;">Ждём вас 5 апреля в 9:30 по адресу:</p>
-                    <p style="font-size: 16px; text-align: left;">г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
+            <head>{css_styles}</head>
+            <body>
+                <div class="email-container">
+                    <img src="data:image/png;base64,{logo_base64}">
+                    <p>Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span></p>
+                    <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
+                    <p>Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:</p>
+                    <p>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
                 </div>
             </body>
             </html>
@@ -79,12 +108,13 @@ def send_email(email, name, qr_filename, language):
         else:  # "kz"
             body = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; text-align: center;">
-                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 20px;">
-                    <p style="font-size: 16px; text-align: left;">BI Ecosystem жүйесіне тіркелгеніңізге рахмет!</p>
-                    <p style="font-size: 16px; text-align: left;">Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз.</p>
-                    <p style="font-size: 16px; text-align: left;">Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
+            <head>{css_styles}</head>
+            <body>
+                <div class="email-container">
+                    <img src="data:image/png;base64,{logo_base64}">
+                    <p><span class="highlight">BI Ecosystem</span> жүйесіне тіркелгеніңізге рахмет!</p>
+                    <p>Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз.</p>
+                    <p>Сізді <span class="highlight">5 сәуір күні сағат 09:30</span> Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
                 </div>
             </body>
             </html>
