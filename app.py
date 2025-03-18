@@ -57,17 +57,18 @@ def send_email(email, qr_filename, language):
         
         template_filename = f"Ala{language}.html"
         
-        # Прикрепляем QR-код
-        with open(qr_filename, "rb") as qr_file:
-            msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
-        
-        # Прикрепляем соответствующий HTML шаблон
+        # Проверяем существование файла шаблона
         if os.path.exists(template_filename):
-            with open(template_filename, "rb") as template_file:
-                msg.add_attachment(template_file.read(), maintype="text", subtype="html", filename=template_filename)
+            with open(template_filename, "r", encoding="utf-8") as template_file:
+                html_content = template_file.read()
+            msg.add_alternative(html_content, subtype="html")
         else:
             print(f"[Ошибка] Файл шаблона {template_filename} не найден.")
             return False
+        
+        # Прикрепляем QR-код
+        with open(qr_filename, "rb") as qr_file:
+            msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
         
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
