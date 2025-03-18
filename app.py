@@ -50,7 +50,7 @@ if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
 def load_logo_base64():
-    with open("logo2.png", "rb") as img:
+    with open("/mnt/data/logo2.png", "rb") as img:
         return base64.b64encode(img.read()).decode('utf-8')
 
 def send_email(email, name, qr_filename, language):
@@ -76,12 +76,13 @@ def send_email(email, name, qr_filename, language):
                 }
                 .email-container img {
                     max-width: 200px;
-                    margin-bottom: 20px;
+                    margin-bottom: 10px;
                 }
                 .email-container p {
                     font-size: 16px;
                     text-align: left;
                     color: #333;
+                    margin: 5px 0;
                 }
                 .email-container .highlight {
                     font-weight: bold;
@@ -97,10 +98,10 @@ def send_email(email, name, qr_filename, language):
             <body>
                 <div class="email-container">
                     <img src="data:image/png;base64,{logo_base64}">
-                    Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span>
-                    Это ваш входной билет, пожалуйста, не удаляйте это письмо.
-                    Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:
-                    г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre
+                    <p>Спасибо за регистрацию на <span class="highlight">BI Ecosystem!</span></p>
+                    <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
+                    <p>Ждём вас <span class="highlight">5 апреля в 9:30</span> по адресу:</p>
+                    <p>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
                 </div>
             </body>
             </html>
