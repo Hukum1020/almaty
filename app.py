@@ -10,7 +10,6 @@ from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
 import threading
-import random
 
 app = Flask(__name__)
 
@@ -55,7 +54,8 @@ def send_email(email, qr_filename, language):
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
-        msg["Subject"] = "Ваш уникальный QR-код" if language == "ru" else "Сіздің QR-код билеті"
+        msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
+        msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
@@ -66,13 +66,21 @@ def send_email(email, qr_filename, language):
             print(f"❌ Файл шаблона {template_filename} не найден.")
             return False
 
-        # ✅ Добавляем уникальный идентификатор
-        unique_id = random.randint(100000, 999999)
-        html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", f"<p>Ваш уникальный код: <b>{unique_id}</b></p>")
+        # ✅ Используем внешний URL логотипа
+        logo_url = "https://b1ae40e7-9747-4db5-94a4-aac4051ea42d.b-cdn.net/e/3a9774dd-e7df-498b-889d-6e685be7c356/ecfc08d5-1976-4e7f-a667-030217f18e65.png"
+        html_content = html_content.replace('src="logo2.png"', f'src="{logo_url}"')
 
-        # Отправляем письмо
+        # Вставляем QR-код (его оставляем в CID)
+        with open(qr_filename, "rb") as qr_file:
+            msg.add_related(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png", cid="<qr>")
+
+        # Подставляем QR-код в HTML
+        html_content = html_content.replace('src="qrcode.png"', 'src="cid:qr"')
+
+        # Добавляем HTML-контент
         msg.add_alternative(html_content, subtype="html")
 
+        # Отправка письма
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls(context=context)
