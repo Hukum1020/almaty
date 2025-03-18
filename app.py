@@ -6,16 +6,14 @@ import ssl
 import gspread
 import json
 import traceback
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
 
 app = Flask(__name__)
 
 # ------------------------------
-# Google Sheets API Setup
+# Настройка Google Sheets API
 # ------------------------------
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
@@ -40,7 +38,7 @@ except Exception as e:
     raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
 # ------------------------------
-# SMTP Email Configuration
+# Настройка SMTP (Gmail)
 # ------------------------------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -50,95 +48,37 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
-# Path to your logo
-LOGO_PATH = "logo2.png"  # Make sure this file exists in the script directory
-
 def send_email(email, name, qr_filename, language):
     try:
-        # Generate Email Message
-        msg = MIMEMultipart("related")
+        msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
 
-        # Read the logo image
-        with open(LOGO_PATH, "rb") as logo_file:
-            logo_data = logo_file.read()
+        if language == "ru":
+            body = f"""Спасибо за регистрацию на BI Ecosystem!  
 
-        # Read the QR Code image
+Это ваш входной билет, пожалуйста, не удаляйте это письмо. QR-код нужно предъявить на входе для участия в розыгрыше ценных призов!  
+
+Ждём вас 5 апреля в 9:30 по адресу:  
+г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre"""
+        else:  # "kz"
+            body = """BI Ecosystem жүйесіне тіркелгеніңізге рахмет! 
+
+Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз. Ұтыс ойындарында қатысу үшін осы QR кодты кіру есігі алдында көрсету қажет.
+
+Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз."""
+
+        msg.set_content(body)
+
         with open(qr_filename, "rb") as qr_file:
-            qr_data = qr_file.read()
+            msg.add_attachment(
+                qr_file.read(),
+                maintype="image",
+                subtype="png",
+                filename="qrcode.png"
+            )
 
-        # Set HTML Email Template
-        html_template = f"""\
-        <!DOCTYPE html>
-        <html lang="ru">
-        <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ваш билет</title>
-        <style>
-            body {{
-                background-color: #132f63;
-                color: white;
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                text-align: center;
-            }}
-            .container {{
-                width: 100%;
-                max-width: 600px;
-                margin: auto;
-                padding: 20px;
-                border: 1px solid #EBEBEB;
-                border-radius: 5px;
-                background-color: #132f63;
-            }}
-            .logo {{
-                text-align: left;
-                padding: 20px;
-            }}
-            .qr-code {{
-                text-align: center;
-                margin: 20px;
-            }}
-        </style>
-        </head>
-        <body>
-            <div class="logo">
-                <img src="cid:logo" alt="Company Logo" width="150">
-            </div>
-            <div class="container">
-                <h1>Спасибо за регистрацию!</h1>
-                <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
-                <p>QR code нужно предъявить на входе для участия в розыгрыше ценных призов!</p>
-                <div class="qr-code">
-                    <img src="cid:qrcode" alt="QR Code" width="150" height="150">
-                </div>
-                <p>Ждём вас 5 апреля в 9:30 по адресу:</p>
-                <p><b>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</b></p>
-            </div>
-        </body>
-        </html>
-        """
-
-        # Attach HTML Content
-        msg.attach(MIMEText(html_template, "html"))
-
-        # Attach Logo as Inline Image
-        logo_img = MIMEImage(logo_data, _subtype="png")
-        logo_img.add_header("Content-ID", "<logo>")
-        logo_img.add_header("Content-Disposition", "inline", filename="logo.png")
-        msg.attach(logo_img)
-
-        # Attach QR Code as Inline Image
-        qr_img = MIMEImage(qr_data, _subtype="png")
-        qr_img.add_header("Content-ID", "<qrcode>")
-        qr_img.add_header("Content-Disposition", "inline", filename="qrcode.png")
-        msg.attach(qr_img)
-
-        # Send Email
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls(context=context)
@@ -158,7 +98,7 @@ def process_new_guests():
 
         for i in range(1, len(all_values)):
             row = all_values[i]
-            if len(row) < 11:
+            if len(row) < 11:  # Теперь проверяем, что есть хотя бы 11 колонок (до language)
                 continue
 
             email, name, phone, status, language = row[0], row[1], row[2], row[7], row[10].strip().lower()
@@ -179,7 +119,7 @@ def process_new_guests():
         print(f"[Ошибка] при обработке гостей: {e}")
         traceback.print_exc()
 
-# Background Task (Google Sheets Processing)
+# Фоновый процесс (для обработки Google Sheets)
 def background_task():
     while True:
         try:
@@ -189,7 +129,7 @@ def background_task():
             traceback.print_exc()
         time.sleep(30)
 
-# Start Background Task
+# Запуск фонового процесса при старте
 import threading
 threading.Thread(target=background_task, daemon=True).start()
 
