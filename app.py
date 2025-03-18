@@ -86,7 +86,7 @@ def send_email(email, name, qr_filename, language):
                 }
                 .email-container .highlight {
                     font-weight: bold;
-                    color: #2DB100;
+                    color: #132f63;
                 }
             </style>
         """
