@@ -7,7 +7,6 @@ import gspread
 import json
 import traceback
 from email.message import EmailMessage
-from email.utils import make_msgid
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
 import base64
@@ -50,20 +49,25 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
+def load_logo_base64():
+    with open("/mnt/data/logo2.png", "rb") as img:
+        return base64.b64encode(img.read()).decode('utf-8')
+
 def send_email(email, name, qr_filename, language):
     try:
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
-        logo_cid = make_msgid()
+
+        logo_base64 = load_logo_base64()
 
         if language == "ru":
             body = f"""
             <html>
             <body style="font-family: Arial, sans-serif; text-align: center;">
                 <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <img src="cid:{logo_cid[1:-1]}" style="max-width: 200px; margin-bottom: 20px;">
+                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 20px;">
                     <p style="font-size: 16px; text-align: left;">Спасибо за регистрацию на BI Ecosystem!</p>
                     <p style="font-size: 16px; text-align: left;">Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
                     <p style="font-size: 16px; text-align: left;">Ждём вас 5 апреля в 9:30 по адресу:</p>
@@ -73,11 +77,11 @@ def send_email(email, name, qr_filename, language):
             </html>
             """
         else:  # "kz"
-            body = """
+            body = f"""
             <html>
             <body style="font-family: Arial, sans-serif; text-align: center;">
                 <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <img src="cid:{logo_cid[1:-1]}" style="max-width: 200px; margin-bottom: 20px;">
+                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 20px;">
                     <p style="font-size: 16px; text-align: left;">BI Ecosystem жүйесіне тіркелгеніңізге рахмет!</p>
                     <p style="font-size: 16px; text-align: left;">Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз.</p>
                     <p style="font-size: 16px; text-align: left;">Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
@@ -88,9 +92,6 @@ def send_email(email, name, qr_filename, language):
         
         msg.add_alternative(body, subtype='html')
         
-        with open("logo2.png", "rb") as img:
-            msg.get_payload()[0].add_related(img.read(), maintype='image', subtype='png', cid=logo_cid)
-
         with open(qr_filename, "rb") as qr_file:
             msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
 
@@ -106,6 +107,7 @@ def send_email(email, name, qr_filename, language):
         print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
         traceback.print_exc()
         return False
+
 
 
 def process_new_guests():
