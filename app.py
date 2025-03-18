@@ -52,7 +52,7 @@ def send_email(email, name, qr_filename, language):
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
 
         # Загружаем логотип
-        logo_path = "/logo2.png"  # Убедись, что файл существует в Railway
+        logo_path = "logo2.png"  # Убедись, что файл существует в Railway
         with open(logo_path, "rb") as logo_file:
             logo_data = logo_file.read()
 
