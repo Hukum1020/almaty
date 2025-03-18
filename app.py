@@ -1,53 +1,3 @@
-import os
-import time
-import qrcode
-import smtplib
-import ssl
-import gspread
-import json
-import traceback
-from email.message import EmailMessage
-from oauth2client.service_account import ServiceAccountCredentials
-from flask import Flask
-
-app = Flask(__name__)
-
-# ------------------------------
-# Настройка Google Sheets API
-# ------------------------------
-SCOPE = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
-
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-if not SPREADSHEET_ID:
-    raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
-
-CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
-if not CREDENTIALS_JSON:
-    raise ValueError("❌ Ошибка: GOOGLE_CREDENTIALS_JSON не найдено!")
-
-try:
-    creds_dict = json.loads(CREDENTIALS_JSON)
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-except Exception as e:
-    raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
-
-# ------------------------------
-# Настройка SMTP (Gmail)
-# ------------------------------
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-
-if not SMTP_USER or not SMTP_PASSWORD:
-    raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
-
 def send_email(email, name, qr_filename, language):
     try:
         msg = EmailMessage()
@@ -69,7 +19,74 @@ def send_email(email, name, qr_filename, language):
 
 Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз."""
 
-        msg.set_content(body)
+        email_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f4f4;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 20px auto;
+                    background-color: white;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    background-color: #132f63;
+                    padding: 20px;
+                    text-align: center;
+                    color: white;
+                    font-size: 28px;
+                    font-weight: bold;
+                }}
+                .content {{
+                    padding: 20px;
+                    color: #333;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }}
+                .button {{
+                    display: inline-block;
+                    background-color: #4CAF50;
+                    color: white;
+                    text-decoration: none;
+                    padding: 12px 20px;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    text-align: center;
+                    margin-top: 20px;
+                }}
+                .footer {{
+                    padding: 15px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #888;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    BI Ecosystem
+                </div>
+                <div class="content">
+                    <p>{body}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg.set_content(body)  # Plain text fallback
+        msg.add_alternative(email_html, subtype="html")
 
         with open(qr_filename, "rb") as qr_file:
             msg.add_attachment(
@@ -91,6 +108,7 @@ def send_email(email, name, qr_filename, language):
         print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
         traceback.print_exc()
         return False
+
 
 def process_new_guests():
     try:
