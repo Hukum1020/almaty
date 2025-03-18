@@ -50,7 +50,7 @@ if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
 def load_logo_base64():
-    with open("/mnt/data/logo2.png", "rb") as img:
+    with open("logo2.png", "rb") as img:
         return base64.b64encode(img.read()).decode('utf-8')
 
 def send_email(email, name, qr_filename, language):
