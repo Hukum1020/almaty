@@ -7,12 +7,16 @@ import gspread
 import json
 import traceback
 from email.message import EmailMessage
+from email.utils import make_msgid
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
+import base64
 
 app = Flask(__name__)
 
+# ------------------------------
 # Настройка Google Sheets API
+# ------------------------------
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -35,7 +39,9 @@ try:
 except Exception as e:
     raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
+# ------------------------------
 # Настройка SMTP (Gmail)
+# ------------------------------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
@@ -50,48 +56,44 @@ def send_email(email, name, qr_filename, language):
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
+        logo_cid = make_msgid()
 
-        # Загружаем логотип
-        logo_path = "logo2.png"  # Убедись, что файл существует в Railway
-        with open(logo_path, "rb") as logo_file:
-            logo_data = logo_file.read()
-
-        email_body = f'''
-        <html>
-        <body style="font-family: Arial, sans-serif;">
-            <div style="text-align: center;">
-                <img src="cid:logo" style="max-width: 200px; margin-bottom: 20px;">
-                <p>Спасибо за регистрацию на BI Ecosystem!</p>
-                <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо. QR-код нужно предъявить на входе для участия в розыгрыше ценных призов!</p>
-                <p>Ждём вас 5 апреля в 9:30 по адресу:</p>
-                <p>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
-            </div>
-        </body>
-        </html>
-        ''' if language == "ru" else '''
-        <html>
-        <body style="font-family: Arial, sans-serif;">
-            <div style="text-align: center;">
-                <img src="cid:logo" style="max-width: 200px; margin-bottom: 20px;">
-                <p>BI Ecosystem жүйесіне тіркелгеніңізге рахмет!</p>
-                <p>Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз. Ұтыс ойындарында қатысу үшін осы QR кодты кіру есігі алдында көрсету қажет.</p>
-                <p>Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
-            </div>
-        </body>
-        </html>
-        '''
-
-        msg.add_alternative(email_body, subtype='html')
-        msg.add_attachment(logo_data, maintype='image', subtype='png', filename='logo.png', cid='logo')
+        if language == "ru":
+            body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; text-align: center;">
+                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                    <img src="cid:{logo_cid[1:-1]}" style="max-width: 200px; margin-bottom: 20px;">
+                    <p style="font-size: 16px; text-align: left;">Спасибо за регистрацию на BI Ecosystem!</p>
+                    <p style="font-size: 16px; text-align: left;">Это ваш входной билет, пожалуйста, не удаляйте это письмо.</p>
+                    <p style="font-size: 16px; text-align: left;">Ждём вас 5 апреля в 9:30 по адресу:</p>
+                    <p style="font-size: 16px; text-align: left;">г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
+                </div>
+            </body>
+            </html>
+            """
+        else:  # "kz"
+            body = """
+            <html>
+            <body style="font-family: Arial, sans-serif; text-align: center;">
+                <div style="max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                    <img src="cid:{logo_cid[1:-1]}" style="max-width: 200px; margin-bottom: 20px;">
+                    <p style="font-size: 16px; text-align: left;">BI Ecosystem жүйесіне тіркелгеніңізге рахмет!</p>
+                    <p style="font-size: 16px; text-align: left;">Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз.</p>
+                    <p style="font-size: 16px; text-align: left;">Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
+                </div>
+            </body>
+            </html>
+            """
+        
+        msg.add_alternative(body, subtype='html')
+        
+        with open("logo2.png", "rb") as img:
+            msg.get_payload()[0].add_related(img.read(), maintype='image', subtype='png', cid=logo_cid)
 
         with open(qr_filename, "rb") as qr_file:
-            msg.add_attachment(
-                qr_file.read(),
-                maintype="image",
-                subtype="png",
-                filename="qrcode.png"
-            )
-        
+            msg.add_attachment(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png")
+
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls(context=context)
@@ -104,6 +106,7 @@ def send_email(email, name, qr_filename, language):
         print(f"[Ошибка] Не удалось отправить письмо на {email}: {e}")
         traceback.print_exc()
         return False
+
 
 def process_new_guests():
     try:
