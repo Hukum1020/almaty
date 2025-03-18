@@ -55,6 +55,7 @@ def send_email(email, qr_filename, language):
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
+        msg.set_type("multipart/related")  # Указываем, что письмо содержит изображения внутри HTML
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
@@ -66,20 +67,19 @@ def send_email(email, qr_filename, language):
             return False
 
         # Вставляем логотип, если он есть
-        logo_path = "logo.png"
+        logo_path = "logo2.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
-                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo.png", cid="logo")
+                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo2.png", cid="<logo>")
             html_content = html_content.replace('src="logo.png"', 'src="cid:logo"')
         else:
             print("⚠️ Логотип не найден, письмо отправляется без него.")
 
         # Вставляем QR-код
         with open(qr_filename, "rb") as qr_file:
-            msg.add_related(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png", cid="qr")
+            msg.add_related(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png", cid="<qr>")
         
         # Добавляем HTML-контент
-        msg.set_content("Ваш почтовый клиент не поддерживает HTML-формат.")
         msg.add_alternative(html_content, subtype="html")
 
         # Отправка письма
