@@ -32,9 +32,12 @@ if not CREDENTIALS_JSON:
 
 try:
     creds_dict = json.loads(CREDENTIALS_JSON)
-    
-    # 🔍 Отладочный вывод, проверяем, загружается ли ключ
-    print(f"[DEBUG] Загруженный private_key (первые 50 символов): {creds_dict.get('private_key')[:50]}")
+
+    # 🔥 Полное исправление: заменяем `\\n` на `\n`
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
+
+    # 🔍 Проверяем, правильно ли преобразован ключ
+    print(f"[DEBUG] Исправленный private_key (первые 50 символов): {creds_dict.get('private_key')[:50]}")
 
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
