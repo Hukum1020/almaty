@@ -51,7 +51,7 @@ if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
 # Path to your logo
-LOGO_PATH = "your-logo.png"  # Make sure this file exists in the script directory
+LOGO_PATH = "logo2.png"  # Make sure this file exists in the script directory
 
 def send_email(email, name, qr_filename, language):
     try:
