@@ -12,9 +12,7 @@ from flask import Flask
 
 app = Flask(__name__)
 
-# ------------------------------
 # Настройка Google Sheets API
-# ------------------------------
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -37,9 +35,7 @@ try:
 except Exception as e:
     raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
-# ------------------------------
 # Настройка SMTP (Gmail)
-# ------------------------------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
@@ -55,21 +51,38 @@ def send_email(email, name, qr_filename, language):
         msg["To"] = email
         msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
 
-        if language == "ru":
-            body = f"""Спасибо за регистрацию на BI Ecosystem!  
+        # Загружаем логотип
+        logo_path = "/logo2.png"  # Убедись, что файл существует в Railway
+        with open(logo_path, "rb") as logo_file:
+            logo_data = logo_file.read()
 
-Это ваш входной билет, пожалуйста, не удаляйте это письмо. QR-код нужно предъявить на входе для участия в розыгрыше ценных призов!  
+        email_body = f'''
+        <html>
+        <body style="font-family: Arial, sans-serif;">
+            <div style="text-align: center;">
+                <img src="cid:logo" style="max-width: 200px; margin-bottom: 20px;">
+                <p>Спасибо за регистрацию на BI Ecosystem!</p>
+                <p>Это ваш входной билет, пожалуйста, не удаляйте это письмо. QR-код нужно предъявить на входе для участия в розыгрыше ценных призов!</p>
+                <p>Ждём вас 5 апреля в 9:30 по адресу:</p>
+                <p>г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre</p>
+            </div>
+        </body>
+        </html>
+        ''' if language == "ru" else '''
+        <html>
+        <body style="font-family: Arial, sans-serif;">
+            <div style="text-align: center;">
+                <img src="cid:logo" style="max-width: 200px; margin-bottom: 20px;">
+                <p>BI Ecosystem жүйесіне тіркелгеніңізге рахмет!</p>
+                <p>Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз. Ұтыс ойындарында қатысу үшін осы QR кодты кіру есігі алдында көрсету қажет.</p>
+                <p>Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз.</p>
+            </div>
+        </body>
+        </html>
+        '''
 
-Ждём вас 5 апреля в 9:30 по адресу:  
-г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre"""
-        else:  # "kz"
-            body = """BI Ecosystem жүйесіне тіркелгеніңізге рахмет! 
-
-Бұл сіздің кіруге арналған билетіңіз, өтініш осы хатты өшірмеңіз. Ұтыс ойындарында қатысу үшін осы QR кодты кіру есігі алдында көрсету қажет.
-
-Сізді 5 сәуір күні сағат 09:30 Алматы қаласы, Әл-Фараби даңғылы, 30 мекен жайы бойынша күтеміз."""
-
-        msg.set_content(body)
+        msg.add_alternative(email_body, subtype='html')
+        msg.add_attachment(logo_data, maintype='image', subtype='png', filename='logo.png', cid='logo')
 
         with open(qr_filename, "rb") as qr_file:
             msg.add_attachment(
@@ -78,7 +91,7 @@ def send_email(email, name, qr_filename, language):
                 subtype="png",
                 filename="qrcode.png"
             )
-
+        
         context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls(context=context)
