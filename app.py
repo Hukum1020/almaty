@@ -27,7 +27,7 @@ if not SPREADSHEET_ID:
 # Работаем с ключами
 CREDENTIALS_FILE = os.getenv("CREDENTIALS_FILE")
 
-if not CREDENTIALS_JSON:
+if not CREDENTIALS_FILE:
     raise ValueError("❌ Ошибка: CREDENTIALS_FILE не найдено!")
 
 try:
