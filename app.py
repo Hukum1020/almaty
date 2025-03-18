@@ -62,7 +62,15 @@ def send_email(email, name, qr_filename):
         msg["Subject"] = "Ваш QR-код"
         msg["From"] = SMTP_USER
         msg["To"] = email
-        msg.set_content(f"Здравствуйте, {name}!\n\nВаш персональный QR-код во вложении.")
+        msg.set_content(f"""Спасибо за регистрацию на BI Ecosystem!  
+
+Это ваш входной билет, пожалуйста, не удаляйте это письмо. QR-код нужно предъявить на входе для участия в розыгрыше ценных призов!  
+
+Ждём вас 5 апреля в 9:30 по адресу:  
+г. Алматы, проспект Аль-Фараби, 30, Almaty Teatre (для Алматы).  
+
+Ждём вас 15 апреля в 9:30 по адресу:  
+мкр. Шымсити 101/1, Tulip Hall (для Шымкента).""")
 
         with open(qr_filename, "rb") as qr_file:
             msg.add_attachment(
