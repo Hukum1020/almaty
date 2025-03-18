@@ -25,7 +25,7 @@ if not SPREADSHEET_ID:
     raise ValueError("❌ Ошибка: SPREADSHEET_ID не найдено!")
 
 # ✅ Используем JSON-файл из репозитория
-CREDENTIALS_FILE = "bigroup-454020-ee270aaea23e.json"  # Укажи правильный путь к файлу
+CREDENTIALS_FILE = "\bigroup-454020-ee270aaea23e.json"  # Укажи правильный путь к файлу
 
 if not os.path.exists(CREDENTIALS_FILE):
     raise FileNotFoundError(f"❌ Ошибка: Файл {CREDENTIALS_FILE} не найден!")
