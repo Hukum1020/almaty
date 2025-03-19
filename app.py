@@ -112,7 +112,7 @@ def process_new_guests():
         
         for i in range(1, len(all_values)):
             row = all_values[i]
-            if len(row) < 11:
+            if len(row) < 10:
                 continue
             
             email, name, phone, status, language = row[1], row[0], row[2], row[8], row[3].strip().lower()
