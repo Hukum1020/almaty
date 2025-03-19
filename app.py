@@ -6,7 +6,6 @@ import ssl
 import gspread
 import json
 import traceback
-import random
 from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
@@ -52,12 +51,10 @@ if not SMTP_USER or not SMTP_PASSWORD:
 
 def send_email(email, qr_filename, language):
     try:
-        subject_ru = f"Ваш персональный QR-код #{random.randint(1000, 9999)}"
-        subject_kz = f"Сіздің жеке QR-кодыңыз #{random.randint(1000, 9999)}"
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
-        msg["Subject"] = subject_ru if language == "ru" else subject_kz
+        msg["Subject"] = "Ваш QR-код" if language == "ru" else "QR-код билеті"
         msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
@@ -68,10 +65,6 @@ def send_email(email, qr_filename, language):
         else:
             print(f"❌ Файл шаблона {template_filename} не найден.")
             return False
-
-        # ✅ Добавляем уникальный идентификатор в письмо
-        unique_id = random.randint(100000, 999999)
-        html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", str(unique_id))
 
         # ✅ Встраиваем логотип как вложение
         logo_path = "logo2.png"
