@@ -6,7 +6,6 @@ import ssl
 import gspread
 import json
 import traceback
-import random
 from email.message import EmailMessage
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask
@@ -52,13 +51,12 @@ if not SMTP_USER or not SMTP_PASSWORD:
 
 def send_email(email, qr_filename, language):
     try:
-        subject_ru = f"Ваш персональный QR-код #{random.randint(1000, 9999)}"
-        subject_kz = f"Сіздің жеке QR-кодыңыз #{random.randint(1000, 9999)}"
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
-        msg["Subject"] = subject_ru if language == "ru" else subject_kz
-        msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
+        msg["Subject"] = "Ваш персональный QR-код" if language == "ru" else "Сіздің жеке QR-кодыңыз"
+
+        msg.set_type("multipart/related")  
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
@@ -69,11 +67,7 @@ def send_email(email, qr_filename, language):
             print(f"❌ Файл шаблона {template_filename} не найден.")
             return False
 
-        # ✅ Добавляем уникальный идентификатор в письмо
-        unique_id = random.randint(100000, 999999)
-        html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", str(unique_id))
-
-        # ✅ Встраиваем логотип как вложение
+        # ✅ Встраиваем логотип
         logo_path = "logo2.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
@@ -109,31 +103,51 @@ def send_email(email, qr_filename, language):
 def process_new_guests():
     try:
         all_values = sheet.get_all_values()
-        
+        headers = all_values[0]  # Заголовки колонок
+
+        # Определяем индексы колонок
+        name_idx = headers.index("Name")
+        email_idx = headers.index("Email")
+        phone_idx = headers.index("Phone")
+        language_idx = headers.index("language")
+        sent_idx = headers.index("sent")  # Колонка, в которую пишем отметку об отправке
+
         for i in range(1, len(all_values)):
             row = all_values[i]
-            if len(row) < 11:
+
+            if len(row) <= sent_idx:  # Если строки пустые, пропускаем
                 continue
-            
-            email, name, phone, status, language = row[0], row[1], row[2], row[7], row[10].strip().lower()
-            
-            if not name or not phone or not email or status.strip().lower() == "done":
+
+            email = row[email_idx].strip()
+            name = row[name_idx].strip()
+            phone = row[phone_idx].strip()
+            language = row[language_idx].strip().lower()
+            sent_status = row[sent_idx].strip() if len(row) > sent_idx else ""
+
+            # Проверяем, если письмо уже отправлено
+            if not name or not phone or not email or sent_status:
                 continue
-            
+
+            # Генерируем QR-код
             qr_data = f"Name: {name}\nPhone: {phone}\nEmail: {email}"
             os.makedirs("qrcodes", exist_ok=True)
             qr_filename = f"qrcodes/{email.replace('@', '_')}.png"
-            
+
             qr = qrcode.make(qr_data)
             qr.save(qr_filename)
-            
+
+            # Отправляем письмо
             if send_email(email, qr_filename, language):
-                sheet.update_cell(i+1, 8, "Done")
+                # Записываем дату отправки в колонку "sent"
+                sheet.update_cell(i + 1, sent_idx + 1, time.strftime("%Y-%m-%d %H:%M:%S"))
+
     except Exception as e:
         print(f"[Ошибка] при обработке гостей: {e}")
         traceback.print_exc()
 
-# Фоновый процесс с бесконечным циклом проверки новых пользователей
+# ------------------------------
+# Фоновый процесс, который постоянно проверяет таблицу
+# ------------------------------
 def background_task():
     while True:
         try:
@@ -141,7 +155,7 @@ def background_task():
         except Exception as e:
             print(f"[Ошибка] {e}")
             traceback.print_exc()
-        time.sleep(30)  # Проверять каждые 30 секунд
+        time.sleep(30)  # Проверяем новых гостей каждые 30 секунд
 
 # Запуск фонового процесса
 threading.Thread(target=background_task, daemon=True).start()
