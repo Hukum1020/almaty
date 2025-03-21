@@ -32,7 +32,6 @@ if not CREDENTIALS_JSON:
 
 try:
     creds_dict = json.loads(CREDENTIALS_JSON)
-    # Исправляем переносы строк в private_key
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
@@ -41,11 +40,11 @@ except Exception as e:
     raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
 # ------------------------------
-# Настройка SMTP c SSL (порт 465)
+# Настройка SMTP
 # ------------------------------
-SMTP_SERVER = "mail.biecosystem.kz"   # Или ваш SMTP-сервер
-SMTP_PORT = 465                       # Порт SSL
-SMTP_USER = os.getenv("SMTP_USER")    # "noreply@biecosystem.kz"
+SMTP_SERVER = "mail.biecosystem.kz"
+SMTP_PORT = 587
+SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 if not SMTP_USER or not SMTP_PASSWORD:
@@ -55,12 +54,11 @@ def send_email(email, qr_filename, language):
     try:
         subject_ru = f"Ваш персональный QR-код #{random.randint(1000, 9999)}"
         subject_kz = f"Сіздің жеке QR-кодыңыз #{random.randint(1000, 9999)}"
-        
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = email
         msg["Subject"] = subject_ru if language == "ru" else subject_kz
-        msg.set_type("multipart/related")  # Для встраивания картинок (QR-код, логотип и т.д.)
+        msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
@@ -71,35 +69,33 @@ def send_email(email, qr_filename, language):
             print(f"❌ Файл шаблона {template_filename} не найден.")
             return False
 
-        # Добавляем уникальный идентификатор в письмо (пример)
+        # ✅ Добавляем уникальный идентификатор в письмо
         unique_id = random.randint(100000, 999999)
         html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", str(unique_id))
 
-        # Встраиваем логотип, если есть
+        # ✅ Встраиваем логотип как вложение
         logo_path = "logo2.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
-                msg.add_related(logo_file.read(), maintype="image", subtype="png",
-                                filename="logo2.png", cid="logo")
-            # Меняем ссылку в HTML, чтобы показывать встроенное изображение
+                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo2.png", cid="logo")
             html_content = html_content.replace('src="logo2.png"', 'src="cid:logo"')
         else:
             print("⚠️ Логотип не найден, письмо отправляется без него.")
 
-        # Встраиваем сам QR-код
+        # ✅ Встраиваем QR-код
         with open(qr_filename, "rb") as qr_file:
-            msg.add_related(qr_file.read(), maintype="image", subtype="png",
-                            filename="qrcode.png", cid="qr")
+            msg.add_related(qr_file.read(), maintype="image", subtype="png", filename="qrcode.png", cid="qr")
+
         # Подставляем QR-код в HTML
         html_content = html_content.replace('src="qrcode.png"', 'src="cid:qr"')
 
-        # Добавляем итоговый HTML
+        # Добавляем HTML-контент
         msg.add_alternative(html_content, subtype="html")
 
         # Отправка письма
         context = ssl.create_default_context()
-        # Используем SMTP_SSL для порта 465
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls(context=context)
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
@@ -145,8 +141,9 @@ def background_task():
         except Exception as e:
             print(f"[Ошибка] {e}")
             traceback.print_exc()
-        time.sleep(30)  # Проверяем каждые 30 секунд
+        time.sleep(30)  # Проверять каждые 30 секунд
 
+# Запуск фонового процесса
 threading.Thread(target=background_task, daemon=True).start()
 
 @app.route("/")
