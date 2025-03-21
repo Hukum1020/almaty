@@ -61,7 +61,7 @@ def send_email(email, qr_filename, language):
         msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
-        template_filename = f"shym{language}.html"
+        template_filename = f"Ala{language}.html"
         if os.path.exists(template_filename):
             with open(template_filename, "r", encoding="utf-8") as template_file:
                 html_content = template_file.read()
