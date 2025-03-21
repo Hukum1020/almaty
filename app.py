@@ -40,9 +40,9 @@ except Exception as e:
     raise ValueError(f"❌ Ошибка подключения к Google Sheets: {e}")
 
 # ------------------------------
-# Настройка SMTP
+# Настройка SMTP (Gmail)
 # ------------------------------
-SMTP_SERVER = "mail.biecosystem.kz"
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
@@ -61,7 +61,7 @@ def send_email(email, qr_filename, language):
         msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
 
         # Загружаем HTML-шаблон
-        template_filename = f"Ala{language}.html"
+        template_filename = f"shym{language}.html"
         if os.path.exists(template_filename):
             with open(template_filename, "r", encoding="utf-8") as template_file:
                 html_content = template_file.read()
@@ -74,11 +74,11 @@ def send_email(email, qr_filename, language):
         html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", str(unique_id))
 
         # ✅ Встраиваем логотип как вложение
-        logo_path = "logo2.png"
+        logo_path = "logo.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
-                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo2.png", cid="logo")
-            html_content = html_content.replace('src="logo2.png"', 'src="cid:logo"')
+                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo.png", cid="logo")
+            html_content = html_content.replace('src="logo.png"', 'src="cid:logo"')
         else:
             print("⚠️ Логотип не найден, письмо отправляется без него.")
 
