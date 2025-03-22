@@ -42,7 +42,7 @@ except Exception as e:
 # ------------------------------
 # Настройка SMTP (Gmail)
 # ------------------------------
-SMTP_SERVER = "smtp.gmail.com"
+SMTP_SERVER = "trial-q3enl6kjx5m42vwr.mlsender.net"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
