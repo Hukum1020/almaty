@@ -134,7 +134,7 @@ def process_new_guests():
             qr = qrcode.make(qr_data)
             qr.save(qr_filename)
             
-            if send_email(email, qr_filename, language):
+            if send_email(email, qr_filename, language, name=name):
                 sheet.update_cell(i+1, 9, "Done")
     except Exception as e:
         print(f"[Ошибка] при обработке гостей: {e}")
