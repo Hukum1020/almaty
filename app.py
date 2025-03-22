@@ -74,11 +74,11 @@ def send_email(email, qr_filename, language):
         html_content = html_content.replace("<!--UNIQUE_PLACEHOLDER-->", str(unique_id))
 
         # ✅ Встраиваем логотип как вложение
-        logo_path = "logo.png"
+        logo_path = "logo2.png"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as logo_file:
-                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo.png", cid="logo")
-            html_content = html_content.replace('src="logo.png"', 'src="cid:logo"')
+                msg.add_related(logo_file.read(), maintype="image", subtype="png", filename="logo2.png", cid="logo")
+            html_content = html_content.replace('src="logo2.png"', 'src="cid:logo"')
         else:
             print("⚠️ Логотип не найден, письмо отправляется без него.")
 
