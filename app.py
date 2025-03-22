@@ -50,15 +50,22 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 if not SMTP_USER or not SMTP_PASSWORD:
     raise ValueError("❌ Ошибка: SMTP_USER или SMTP_PASSWORD не найдены!")
 
-def send_email(email, qr_filename, language):
+def send_email(email, qr_filename, language, name=None):
     try:
-        subject_ru = f"Ваш персональный QR-код #{random.randint(1000, 9999)}"
-        subject_kz = f"Сіздің жеке QR-кодыңыз #{random.randint(1000, 9999)}"
+        random_code = random.randint(1000, 9999)
+        if name:
+            subject_ru = f"{name}, ваш персональный QR-код #{random_code}"
+            subject_kz = f"{name}, сіздің жеке QR-кодыңыз #{random_code}"
+        else:
+            subject_ru = f"Ваш персональный QR-код #{random_code}"
+            subject_kz = f"Сіздің жеке QR-кодыңыз #{random_code}"
+
         msg = EmailMessage()
         msg["From"] = "noreply@biecosystem.kz"
         msg["To"] = email
         msg["Subject"] = subject_ru if language == "ru" else subject_kz
-        msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
+        msg.set_type("multipart/related")
+
 
         # Загружаем HTML-шаблон
         template_filename = f"Ala{language}.html"
