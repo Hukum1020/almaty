@@ -42,7 +42,7 @@ except Exception as e:
 # ------------------------------
 # Настройка SMTP (Gmail)
 # ------------------------------
-SMTP_SERVER = "trial-q3enl6kjx5m42vwr.mlsender.net"
+SMTP_SERVER = "smtp-relay.brevo.com"
 SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
@@ -55,7 +55,7 @@ def send_email(email, qr_filename, language):
         subject_ru = f"Ваш персональный QR-код #{random.randint(1000, 9999)}"
         subject_kz = f"Сіздің жеке QR-кодыңыз #{random.randint(1000, 9999)}"
         msg = EmailMessage()
-        msg["From"] = SMTP_USER
+        msg["From"] = "noreply@biecosystem.kz"
         msg["To"] = email
         msg["Subject"] = subject_ru if language == "ru" else subject_kz
         msg.set_type("multipart/related")  # Оставляем для встраивания QR-кода
