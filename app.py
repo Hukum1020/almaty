@@ -54,11 +54,11 @@ def send_email(email, qr_filename, language, name=None):
     try:
         random_code = random.randint(1000, 9999)
         if name:
-            subject_ru = f"{name}, ваш персональный QR-код #{random_code}"
-            subject_kz = f"{name}, сіздің жеке QR-кодыңыз #{random_code}"
+            subject_ru = "Завтра встречаемся на BI Ecosystem — ждём Вас!"
+            subject_kz = "Сәлеметсіз бе! Ертең осы жылдың ең ірі оқиғасы — BI Ecosystem-де кездесеміз."
         else:
-            subject_ru = f"Ваш персональный QR-код #{random_code}"
-            subject_kz = f"Сіздің жеке QR-кодыңыз #{random_code}"
+            subject_ru = "Завтра встречаемся на BI Ecosystem — ждём Вас!"
+            subject_kz = "Сәлеметсіз бе! Ертең осы жылдың ең ірі оқиғасы — BI Ecosystem-де кездесеміз."
 
         msg = EmailMessage()
         msg["From"] = "noreply@biecosystem.kz"
